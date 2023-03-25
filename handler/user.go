@@ -67,8 +67,8 @@ func (h *userHandler) Login(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&input)
 	if err != nil {
-		errors := helper.FormatValidationError(err)
-		errorMessage := gin.H{"errors": errors}
+		// errors := helper.FormatValidationError(err)
+		errorMessage := gin.H{"errors": "error"}
 
 		response := helper.APIResponse("Login failed", http.StatusUnprocessableEntity, "error", errorMessage)
 		c.JSON(http.StatusUnprocessableEntity, response)
@@ -136,7 +136,8 @@ func (h *userHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	userId := 1
+	getUserId := c.MustGet("currentUser").(user.User)
+	userId := getUserId.ID
 	_, err = h.userService.SaveAvatar(userId, path)
 
 	data := gin.H{"is_upload": true}

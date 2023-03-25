@@ -3,9 +3,13 @@ package main
 import (
 	"bwastartup/auth"
 	"bwastartup/handler"
+	"bwastartup/helper"
 	"bwastartup/user"
 	"log"
+	"net/http"
+	"strings"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -42,68 +46,52 @@ func main() {
 	api.POST("/users", userHandler.RegisterUser)
 	api.POST("/login", userHandler.Login)
 	api.GET("/users", userHandler.UsersAll)
-	api.POST("/avatar", userHandler.UploadAvatar)
+	api.POST("/avatar", authMiddleware(authService, userService), userHandler.UploadAvatar)
 
 	router.Run()
 
-	// userInput := user.RegisterUserInput{}
-
-	// userInput.Name = "Rafly Fahrezi"
-	// userInput.Email = "AM@gmail.com"
-	// userInput.Occupation = "anak punk"
-	// userInput.Password = "123456"
-
-	// userService.RegisterUser(userInput)
-
-	// user := user.User{
-	// 	Name: "Test Simpan",
-	// }
-
-	// userRepository.Save(user)
-
-	// fmt.Println("Koneksi Berhasil")
-
-	// var users []user.User
-	// //length := len(users)
-
-	// //fmt.Println(length)
-
-	// db.Find(&users)
-
-	// //length = len(users)
-
-	// //fmt.Println(length)
-
-	// for _, user := range users {
-	// 	fmt.Println(user.Name)
-	// 	fmt.Println(user.Email)
-	// 	fmt.Println("=================")
-	// }
-
-	// router := gin.Default()
-	// router.GET("/hendler", hendler)
-	// router.Run()
-
 }
 
-// func hendler(c *gin.Context) {
+func authMiddleware(authService auth.Service, userService user.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
 
-// 	dsn := "root:@tcp(127.0.0.1:3306)/bwastartup?charset=utf8mb4&parseTime=True&loc=Local"
-// 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+		if !strings.Contains(authHeader, "Bearer") {
+			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
+			return
+		}
 
-// 	if err != nil {
-// 		log.Fatal(err.Error())
-// 	}
+		tokenString := ""
+		arrayToken := strings.Split(authHeader, " ")
+		if len(arrayToken) == 2 {
+			tokenString = arrayToken[1]
+		}
 
-// 	//fmt.Println("Koneksi Berhasil")
+		token, err := authService.ValidateToken(tokenString)
+		if err != nil {
+			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
+			return
+		}
 
-// 	var users []user.User
-// 	//length := len(users)
+		claim, ok := token.Claims.(jwt.MapClaims)
 
-// 	//fmt.Println(length)
+		if !ok || !token.Valid {
+			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
+			return
+		}
 
-// 	db.Find(&users)
+		userID := int(claim["user_id"].(float64))
 
-// 	c.JSON(http.StatusOK, users)
+		user, err := userService.GetUserById(userID)
+		if err != nil {
+			response := helper.APIResponse("Unauthorized", http.StatusUnauthorized, "error", nil)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, response)
+			return
+		}
 
-// }
+		c.Set("currentUser", user)
+	}
+}
