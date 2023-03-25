@@ -30,6 +30,7 @@ func main() {
 
 	userRepository := user.NewRepository(db)
 	userService := user.NewService(userRepository)
+
 	authService := auth.NewService()
 
 	userHandler := handler.NewUserHandler(userService, authService)
@@ -41,6 +42,7 @@ func main() {
 	api.POST("/users", userHandler.RegisterUser)
 	api.POST("/login", userHandler.Login)
 	api.GET("/users", userHandler.UsersAll)
+	api.POST("/avatar", userHandler.UploadAvatar)
 
 	router.Run()
 

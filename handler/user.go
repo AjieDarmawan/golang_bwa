@@ -109,8 +109,38 @@ func (h *userHandler) UsersAll(c *gin.Context) {
 		return
 	}
 
-	//formatter := user.FormatGetUser(userAll)
-	response := helper.APIResponse("Sukses", http.StatusOK, "success", userAll)
+	formatter := user.FormatUser2(userAll)
+	response := helper.APIResponse("Sukses", http.StatusOK, "success", formatter)
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *userHandler) UploadAvatar(c *gin.Context) {
+	//c.SaveUploadedFile(file,)
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		data := gin.H{"is_upload": false}
+		response := helper.APIResponse("Gagal Upload", http.StatusBadRequest, "error", data)
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	path := "images/" + file.Filename
+	err = c.SaveUploadedFile(file, path)
+
+	if err != nil {
+		data := gin.H{"is_upload": false}
+		response := helper.APIResponse("Gagal Upload", http.StatusBadRequest, "error", data)
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	userId := 1
+	_, err = h.userService.SaveAvatar(userId, path)
+
+	data := gin.H{"is_upload": true}
+	response := helper.APIResponse("Berrhasil Upload", http.StatusBadRequest, "sukses", data)
+	c.JSON(http.StatusOK, response)
+
 }
